@@ -34,23 +34,24 @@ instance Show (Program) where
 data Memory = Memory [MemoryCell] MemoryCell [MemoryCell] 
 
 instance Show Memory where
-    show (Memory left pointer right) = (showList left 5) ++ (showCenterCell pointer) ++ (showList right 5)
+    show (Memory left pointer right) = "..." ++ (showList left 5) ++ (showCenterCell pointer) ++ (showList right 5) ++ "..."
         where
-            showList list numToPrint = foldr (++) "" (take numToPrint (map showMemoryCell list))
+            showList list numToPrint = (foldr (++) "" (take numToPrint (map showMemoryCell list))) 
 
 -- for the cell currently pointed to
 showCenterCell :: MemoryCell -> String
-showCenterCell m = "[*" ++ (show m) ++ "*]"
+showCenterCell m = " [*" ++ (show m) ++ "*] "
 
 -- for all other cells
 showMemoryCell :: MemoryCell -> String
-showMemoryCell m = "[" ++ (show m) ++ "]"
+showMemoryCell m = " [" ++ (show m) ++ "] "
 
 type MemoryCell = Int
 
 -- initialize memory with blanks on both sides, and current value set to 0
 blankMemory :: Memory
 blankMemory = Memory (repeat 0) 0 (repeat 0)
+-- blankMemory = Memory [1..10] 0 [1..10]
 ------------------------------------------------------------------------------
 -- Parser
 parser :: [Char] -> Program
@@ -74,12 +75,26 @@ checkSyntax = undefined
 ------------------------------------------------------------------------------
 -- Evaluator
 
--- -- corresponding to DecrPtr
--- moveLeft :: Memory -> Memory
--- moveLeft (Memory left center right) = Memory newLeft newCenter newRight
---     where
---         newLeft = init left
---         newCenter = le
---         newRight = (center : right)
+-- corresponding to DecrPtr
+moveLeft :: Memory -> Memory
+moveLeft (Memory left center right) = Memory newLeft newCenter newRight
+    where
+        newLeft = init left
+        newCenter = last left
+        newRight = (center : right)
 
 -- corresponding to IncrPtr
+moveRight :: Memory -> Memory
+moveRight (Memory left center right) = Memory newLeft newCenter newRight
+    where
+        newLeft = (left ++ [center])
+        newCenter = head right
+        newRight = tail right
+
+-- corresponding to IncrData
+incr :: Memory -> Memory
+incr (Memory left center right) = (Memory left (center + 1) right)
+
+-- corresponding to DecrData
+decr :: Memory -> Memory
+decr (Memory left center right) = (Memory left (center - 1) right)
