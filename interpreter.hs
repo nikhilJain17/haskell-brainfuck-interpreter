@@ -96,6 +96,11 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
             evaluator (BrainfuckProgram xs) mem
     Loop l ->
         do  -- '['
+            -- if (getCurrentCell mem) == 0 
+            --     then evaluator (BrainfuckProgram xs) mem
+            -- else evaluator (Brainfuc)
+
+
             looper mem (BrainfuckProgram l)
             -- where -- assume we are at beginning
             where looper mem loopInstr = case (getCurrentCell mem) of
