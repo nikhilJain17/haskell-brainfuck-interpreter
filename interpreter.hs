@@ -72,6 +72,12 @@ checkSyntax = undefined
 
 ------------------------------------------------------------------------------
 -- Evaluator
+
+
+-- we need 2 evaluator funcs
+-- 1) pure one, that just goes from prgm -> memory -> memory
+-- 2) IO one, that calls (1) and goes from Program -> Memory -> IO Memory
+
 evaluator :: Program -> Memory -> IO Memory
 evaluator (BrainfuckProgram (x:xs)) mem = case x of 
     DecrPtr -> evaluator (BrainfuckProgram xs) (moveLeft mem)
@@ -88,10 +94,17 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
         do
             putChar (chr (getCurrentCell mem))
             evaluator (BrainfuckProgram xs) mem
+    Loop l ->
+        do  -- '['
+            looper mem (BrainfuckProgram l)
+            -- where -- assume we are at beginning
+            where looper mem loopInstr = case (getCurrentCell mem) of
+                    0 -> evaluator (BrainfuckProgram xs) mem
+                    otherwise -> looper mem' loopInstr -- execute loop
+                    where
+                        mem' = evaluator loopInstr mem
 
 evaluator (BrainfuckProgram []) mem = return mem
-
-
 
 -- corresponding to DecrPtr
 moveLeft :: Memory -> Memory
@@ -126,7 +139,7 @@ getCurrentCell (Memory _ m _) = m
 -- initialize memory with blanks on both sides, and current value set to 0
 blankMemory :: Memory
 -- blankMemory = Memory (repeat 0) 0 (repeat 0)
-blankMemory = Memory [1..4] 0 [1..4]
+blankMemory = Memory (repeat 0) 5 (repeat 0)
 
 ------------------------------------------------------------------------------
 -- REPL
