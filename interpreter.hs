@@ -10,11 +10,12 @@ data Instruction = IncrPtr
     | DecrData
     | Print
     | Input
-    | LoopBegin
-    | LoopEnd
+    | Loop [Instruction]
+    | SyntaxError -- todo better error handling
     | Comment Char
 
 -- A program is the whole source code, represented as a list of Instructions
+-- we create a new data type instead of typedefing so we can have a show instance for it
 data Program = BrainfuckProgram [Instruction]
 
 -- BF programs operate on a list of memory cells, where each cell holds one character
@@ -26,18 +27,44 @@ type MemoryCell = Int
 ------------------------------------------------------------------------------
 -- Parser
 parser :: [Char] -> Program
-parser sourceCode = BrainfuckProgram $ map parseSingleInstruction sourceCode
+-- parser sourceCode = BrainfuckProgram $ map parseSingleInstruction sourceCode
+parser sourceCode = BrainfuckProgram $ parseInstr sourceCode []
 
-parseSingleInstruction :: Char -> Instruction
-parseSingleInstruction '>' = IncrPtr 
-parseSingleInstruction '<' =  DecrPtr
-parseSingleInstruction '+' =  IncrData
-parseSingleInstruction '-' =  DecrData
-parseSingleInstruction '.' =  Print
-parseSingleInstruction ',' =  Input
-parseSingleInstruction '[' =  LoopBegin
-parseSingleInstruction ']' =  LoopEnd
-parseSingleInstruction c = Comment c
+-- assumes syntax errors have already been checked for
+parseInstr :: String -> [Instruction] -> [Instruction]
+parseInstr (c:cs) instr = case c of
+    '>' -> parseInstr cs (instr ++ [IncrPtr])
+    '<' -> parseInstr cs (instr ++ [DecrPtr])
+    '+' -> parseInstr cs (instr ++ [IncrData])
+    '-' -> parseInstr cs (instr ++ [DecrData])
+    '.' -> parseInstr cs (instr ++ [Print])
+    ',' -> parseInstr cs (instr ++ [Input])
+    '[' -> parseInstr str (instr ++ [Loop loopInstr])
+        where
+            loopInstr = parseInstr (stringInsideMatchingBracket cs "") []
+            str = stringAfterMatchingBracket cs
+    ']' -> parseInstr cs instr -- do nothing
+    _ -> parseInstr cs instr
+
+parseInstr "" instr = instr
+
+-- returns string inside matching brackets assuming first char is open bracket
+-- e.g. for "[abcdef]ghijkl", returns "abcdef"
+stringInsideMatchingBracket :: String -> String -> String
+stringInsideMatchingBracket (c:cs) currString = 
+    if c == ']' then currString
+    else if c == '[' then stringInsideMatchingBracket cs currString
+    else (stringInsideMatchingBracket cs (currString ++ [c]))
+stringInsideMatchingBracket "" currString = currString 
+    
+-- returns string after matching brackets
+-- e.g. for "[abcdef]ghijkl", returns "ghijkl"
+stringAfterMatchingBracket :: String -> String 
+stringAfterMatchingBracket (c:cs) = 
+    if c == ']' then cs
+    else stringAfterMatchingBracket cs
+stringAfterMatchingBracket "" = ""
+
 
 -- Checks for the only possible syntax error, which are mismatched parenthesis
 checkSyntax :: Program -> Maybe (Program)
@@ -107,15 +134,14 @@ blankMemory = Memory [1..4] 0 [1..4]
 -- Printing
 
 instance Show Instruction where
-    show IncrPtr = ">"
-    show DecrPtr = "<"
-    show IncrData = "+"
-    show DecrData = "-"
-    show Print = "."
-    show Input = ","
-    show LoopBegin = "["
-    show LoopEnd = "]"  
-    show (Comment c) = show c
+    show IncrPtr = "IncrPtr "
+    show DecrPtr = "DecrPtr "
+    show IncrData = "IncrData "
+    show DecrData = "DecrData "
+    show Print = "Print "
+    show Input = "Input "
+    show (Loop l) = "Loop [" ++ (foldr (++) "" (map show l)) ++ "] "
+    show (Comment c) = ""
 
 instance Show (Program) where
     show (BrainfuckProgram a) = foldr (++) "" (map show a)
@@ -132,3 +158,4 @@ showCenterCell m = " [*" ++ (show m) ++ "*] "
 -- for all other cells
 showMemoryCell :: MemoryCell -> String
 showMemoryCell m = " [" ++ (show m) ++ "] "
+
