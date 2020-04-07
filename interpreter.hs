@@ -1,4 +1,5 @@
 import Data.Char
+import System.IO
 
 ------------------------------------------------------------------------------
 -- Types
@@ -72,42 +73,28 @@ checkSyntax = undefined
 
 ------------------------------------------------------------------------------
 -- Evaluator
-
-
--- we need 2 evaluator funcs
--- 1) pure one, that just goes from prgm -> memory -> memory
--- 2) IO one, that calls (1) and goes from Program -> Memory -> IO Memory
-
 evaluator :: Program -> Memory -> IO Memory
 evaluator (BrainfuckProgram (x:xs)) mem = case x of 
     DecrPtr -> evaluator (BrainfuckProgram xs) (moveLeft mem)
     IncrPtr -> evaluator (BrainfuckProgram xs) (moveRight mem)
     DecrData -> evaluator (BrainfuckProgram xs) (decr mem)
     IncrData -> evaluator (BrainfuckProgram xs) (incr mem)
+    Loop l -> if (getCurrentCell mem == 0) 
+                then evaluator (BrainfuckProgram xs) mem
+            else 
+                do 
+                    mem' <- evaluator (BrainfuckProgram l) mem -- execute the loop
+                    evaluator (BrainfuckProgram (x:xs)) mem' -- recurse on loop instr itself
     Input -> 
         do 
+            putChar 'c'
             c <- getChar
             evaluator (BrainfuckProgram xs) (modifyMemory (const (ord c)) mem)
-            -- where
-            --     newMem = modifyMemory (const (ord c)) mem
     Print -> 
         do
             putChar (chr (getCurrentCell mem))
+            hFlush stdout
             evaluator (BrainfuckProgram xs) mem
-    Loop l ->
-        do  -- '['
-            -- if (getCurrentCell mem) == 0 
-            --     then evaluator (BrainfuckProgram xs) mem
-            -- else evaluator (Brainfuc)
-
-
-            looper mem (BrainfuckProgram l)
-            -- where -- assume we are at beginning
-            where looper mem loopInstr = case (getCurrentCell mem) of
-                    0 -> evaluator (BrainfuckProgram xs) mem
-                    otherwise -> looper mem' loopInstr -- execute loop
-                    where
-                        mem' = evaluator loopInstr mem
 
 evaluator (BrainfuckProgram []) mem = return mem
 
@@ -144,7 +131,7 @@ getCurrentCell (Memory _ m _) = m
 -- initialize memory with blanks on both sides, and current value set to 0
 blankMemory :: Memory
 -- blankMemory = Memory (repeat 0) 0 (repeat 0)
-blankMemory = Memory (repeat 0) 5 (repeat 0)
+blankMemory = Memory (repeat 0) 0 (repeat 0)
 
 ------------------------------------------------------------------------------
 -- REPL
