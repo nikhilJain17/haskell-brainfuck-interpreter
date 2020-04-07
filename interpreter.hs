@@ -21,6 +21,9 @@ data Program = BrainfuckProgram [Instruction]
 
 -- BF programs operate on a list of memory cells, where each cell holds one character
 -- A pointer points to the current memory cell the program is looking at
+-- Left memory is in reverse order. 
+-- e.g. the memory tape (...-4, -3, -2, -1, *0*, 1, 2, 3, 4...) would be represented by
+-- Memory [-1, -2, -3, -4, ...] 0 [1, 2, 3, 4...]
 data Memory = Memory [MemoryCell] MemoryCell [MemoryCell] 
 
 type MemoryCell = Int
@@ -87,7 +90,6 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
                     evaluator (BrainfuckProgram (x:xs)) mem' -- recurse on loop instr itself
     Input -> 
         do 
-            putChar 'c'
             c <- getChar
             evaluator (BrainfuckProgram xs) (modifyMemory (const (ord c)) mem)
     Print -> 
@@ -97,20 +99,20 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
             evaluator (BrainfuckProgram xs) mem
 
 evaluator (BrainfuckProgram []) mem = return mem
-
+ 
 -- corresponding to DecrPtr
 moveLeft :: Memory -> Memory
 moveLeft (Memory left center right) = Memory newLeft newCenter newRight
     where
-        newLeft = init left
-        newCenter = last left
+        newLeft = tail left -- drop the first element
+        newCenter = head left
         newRight = (center : right)
 
 -- corresponding to IncrPtr
 moveRight :: Memory -> Memory
 moveRight (Memory left center right) = Memory newLeft newCenter newRight
     where
-        newLeft = (left ++ [center])
+        newLeft = (center : left)
         newCenter = head right
         newRight = tail right
 
@@ -152,9 +154,10 @@ instance Show (Program) where
     show (BrainfuckProgram a) = foldr (++) "" (map show a)
 
 instance Show Memory where
-    show (Memory left pointer right) = "..." ++ (showList left 10) ++ (showCenterCell pointer) ++ (showList right 10) ++ "..."
+    show (Memory left pointer right) = "..." ++ (showLeft left 10) ++ (showCenterCell pointer) ++ (showRight right 10) ++ "..."
         where
-            showList list numToPrint = (foldr (++) "" (take numToPrint (map showMemoryCell list))) 
+            showRight list numToPrint = (foldr (++) "" (take numToPrint (map showMemoryCell list))) 
+            showLeft list numToPrint = (foldr (++) "" (reverse $ take numToPrint (map showMemoryCell list)))
 
 -- for the cell currently pointed to
 showCenterCell :: MemoryCell -> String
