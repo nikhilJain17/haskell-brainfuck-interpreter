@@ -82,20 +82,23 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
     IncrPtr -> evaluator (BrainfuckProgram xs) (moveRight mem)
     DecrData -> evaluator (BrainfuckProgram xs) (decr mem)
     IncrData -> evaluator (BrainfuckProgram xs) (incr mem)
-    Loop l -> if (getCurrentCell mem == 0) 
-                then evaluator (BrainfuckProgram xs) mem
-            else 
-                do 
-                    mem' <- evaluator (BrainfuckProgram l) mem -- execute the loop
-                    evaluator (BrainfuckProgram (x:xs)) mem' -- recurse on loop instr itself
+    loop@(Loop l) -> 
+                if (getCurrentCell mem <= 0) 
+                    then evaluator (BrainfuckProgram xs) mem
+                else 
+                    evaluator (BrainfuckProgram (l ++ [loop])) mem -- evaluate inside of loop and then append loop to it again
     Input -> 
         do 
+            -- putStrLn("Input: ")
             c <- getChar
             evaluator (BrainfuckProgram xs) (modifyMemory (const (ord c)) mem)
     Print -> 
         do
-            putChar (chr (getCurrentCell mem))
-            hFlush stdout
+            -- putStrLn "Print: "
+            putStrLn (show (getCurrentCell mem)) -- for printing decimal values, debugging only
+            -- (putChar . chr . getCurrentCell) mem -- for printing chars
+            -- hFlush stdout
+
             evaluator (BrainfuckProgram xs) mem
 
 evaluator (BrainfuckProgram []) mem = return mem
@@ -117,12 +120,14 @@ moveRight (Memory left center right) = Memory newLeft newCenter newRight
         newRight = tail right
 
 -- corresponding to IncrData
+-- wraps from 0 to 255
 incr :: Memory -> Memory
-incr = modifyMemory (+1)
+incr (Memory left val right) = Memory left (mod (val + 1) 255) right
 
 -- corresponding to DecrData
+-- wraps from 0 to 255
 decr :: Memory -> Memory
-decr = modifyMemory (+(-1))
+decr (Memory left val right) = Memory left (mod (val + (-1)) 255) right
 
 modifyMemory :: (MemoryCell -> MemoryCell) -> Memory -> Memory
 modifyMemory func (Memory left center right) = Memory left (func center) right 
@@ -154,7 +159,7 @@ instance Show (Program) where
     show (BrainfuckProgram a) = foldr (++) "" (map show a)
 
 instance Show Memory where
-    show (Memory left pointer right) = "..." ++ (showLeft left 10) ++ (showCenterCell pointer) ++ (showRight right 10) ++ "..."
+    show (Memory left pointer right) = "\n\n..." ++ (showLeft left 10) ++ (showCenterCell pointer) ++ (showRight right 10) ++ "..."
         where
             showRight list numToPrint = (foldr (++) "" (take numToPrint (map showMemoryCell list))) 
             showLeft list numToPrint = (foldr (++) "" (reverse $ take numToPrint (map showMemoryCell list)))
