@@ -43,31 +43,46 @@ parseInstr (c:cs) instr = case c of
     '-' -> parseInstr cs (instr ++ [DecrData])
     '.' -> parseInstr cs (instr ++ [Print])
     ',' -> parseInstr cs (instr ++ [Input])
-    '[' -> parseInstr str (instr ++ [Loop loopInstr])
+    '[' -> parseInstr (drop (length (brackets cs)) cs) (instr ++ [Loop loopInstr])
         where
-            loopInstr = parseInstr (stringInsideMatchingBracket cs "") []
-            str = stringAfterMatchingBracket cs
+            loopInstr = parseInstr ((tail . init) (brackets cs)) []
+            -- str = stringAfterMatchingBracket cs
     ']' -> parseInstr cs instr -- do nothing
     _ -> parseInstr cs instr
 
 parseInstr "" instr = instr
 
--- returns string inside matching brackets assuming first char is open bracket
--- e.g. for "[abcdef]ghijkl", returns "abcdef"
-stringInsideMatchingBracket :: String -> String -> String
-stringInsideMatchingBracket (c:cs) currString = 
-    if c == ']' then currString
-    else if c == '[' then stringInsideMatchingBracket cs currString
-    else (stringInsideMatchingBracket cs (currString ++ [c]))
-stringInsideMatchingBracket "" currString = currString 
+brackets :: String -> String
+brackets string = go string 0 False
+  where go (s:ss) 0 False | s /= '[' = go ss 0 False
+        go ('[':ss) 0 False = '[' : go ss 1 True
+        go (']':_) 1 True = "]"
+        go (']':ss) n True = ']' : go ss (n-1) True
+        go ('[':ss) n True = '[' : go ss (n+1) True
+        go (s:ss) n flag = s : go ss n flag 
+        go "" _ _ = ""
+
+
+-- -- returns string inside matching brackets assuming first char is open bracket
+-- -- e.g. for "[abcdef]ghijkl", returns "abcdef"
+-- stringInsideMatchingBracket :: String -> String -> Int -> String
+-- stringInsideMatchingBracket (c:cs) currString parenCounter = 
+--     if c == ']' 
+--         then 
+--             if parenCounter - 1 == 0 
+--                 then currString
+--             else stringInsideMatchingBracket cs (currString ++ [c]) (parenCounter - 1)
+--     else if c == '[' then stringInsideMatchingBracket cs (currString ++ [c]) (parenCounter++)
+--     else (stringInsideMatchingBracket cs (currString ++ [c]))
+-- stringInsideMatchingBracket "" currString _ = currString 
     
--- returns string after matching brackets
--- e.g. for "[abcdef]ghijkl", returns "ghijkl"
-stringAfterMatchingBracket :: String -> String 
-stringAfterMatchingBracket (c:cs) = 
-    if c == ']' then cs
-    else stringAfterMatchingBracket cs
-stringAfterMatchingBracket "" = ""
+-- -- returns string after matching brackets
+-- -- e.g. for "[abcdef]ghijkl", returns "ghijkl"
+-- stringAfterMatchingBracket :: String -> String 
+-- stringAfterMatchingBracket (c:cs) = 
+--     if c == ']' then cs
+--     else stringAfterMatchingBracket cs
+-- stringAfterMatchingBracket "" = ""
 
 
 -- Checks for the only possible syntax error, which are mismatched parenthesis
@@ -83,10 +98,12 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
     DecrData -> evaluator (BrainfuckProgram xs) (decr mem)
     IncrData -> evaluator (BrainfuckProgram xs) (incr mem)
     loop@(Loop l) -> 
-                if (getCurrentCell mem <= 0) 
-                    then evaluator (BrainfuckProgram xs) mem
-                else 
-                    evaluator (BrainfuckProgram (l ++ [loop])) mem -- evaluate inside of loop and then append loop to it again
+                do 
+                    putStrLn ("loop" ++ show l ++ show mem)    
+                    if (getCurrentCell mem == 0) 
+                        then evaluator (BrainfuckProgram xs) mem
+                    else 
+                        evaluator (BrainfuckProgram (l ++ [loop])) mem -- evaluate inside of loop and then append loop to it again
     Input -> 
         do 
             -- putStrLn("Input: ")
