@@ -56,7 +56,7 @@ parseInstr "" instr = instr
 superBracket :: String -> (String, String)
 superBracket "" = ("","")
 superBracket " " = (" ","")
-superBracket string = ((tail . init) parsed, drop ((length parsed) + 1) string)
+superBracket string = ((tail . init) parsed, drop ((length parsed)) string)
     where 
         parsed = if length (brackets string) == 0 then "  " else (brackets string)
 
