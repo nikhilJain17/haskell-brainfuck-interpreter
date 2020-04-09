@@ -107,11 +107,12 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
     IncrData -> evaluator (BrainfuckProgram xs) (incr mem)
     loop@(Loop l) -> 
                 do 
-                    putStrLn ("loop" ++ show l ++ show mem)    
+                    -- putStrLn ("loop" ++ show l ++ show mem ++ "\n" ++ show xs ++ "\n--------")    
+                    -- putStrLn "loop" + (show xs)
                     if (getCurrentCell mem == 0) 
                         then evaluator (BrainfuckProgram xs) mem
                     else 
-                        evaluator (BrainfuckProgram (l ++ [loop])) mem -- evaluate inside of loop and then append loop to it again
+                        evaluator (BrainfuckProgram (l ++ [loop] ++ xs)) mem -- evaluate inside of loop and then append loop to it again
     Input -> 
         do 
             -- putStrLn("Input: ")
@@ -120,8 +121,8 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
     Print -> 
         do
             -- putStrLn "Print: "
-            putStrLn (show (getCurrentCell mem)) -- for printing decimal values, debugging only
-            -- (putChar . chr . getCurrentCell) mem -- for printing chars
+            -- putStrLn (show (getCurrentCell mem)) -- for printing decimal values, debugging only
+            (putChar . chr . getCurrentCell) mem -- for printing chars
             -- hFlush stdout
 
             evaluator (BrainfuckProgram xs) mem
