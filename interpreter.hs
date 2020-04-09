@@ -43,14 +43,22 @@ parseInstr (c:cs) instr = case c of
     '-' -> parseInstr cs (instr ++ [DecrData])
     '.' -> parseInstr cs (instr ++ [Print])
     ',' -> parseInstr cs (instr ++ [Input])
-    '[' -> parseInstr (drop (length (brackets cs)) cs) (instr ++ [Loop loopInstr])
+    '[' -> parseInstr (after) (instr ++ [Loop loopInstr])
         where
-            loopInstr = parseInstr ((tail . init) (brackets cs)) []
+            loopInstr = parseInstr (loopContents) []
+            (loopContents, after) = superBracket (c:cs)
             -- str = stringAfterMatchingBracket cs
     ']' -> parseInstr cs instr -- do nothing
     _ -> parseInstr cs instr
 
 parseInstr "" instr = instr
+
+superBracket :: String -> (String, String)
+superBracket "" = ("","")
+superBracket " " = (" ","")
+superBracket string = ((tail . init) parsed, drop ((length parsed) + 1) string)
+    where 
+        parsed = if length (brackets string) == 0 then "  " else (brackets string)
 
 brackets :: String -> String
 brackets string = go string 0 False
