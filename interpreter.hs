@@ -94,8 +94,17 @@ brackets string = go string 0 False
 
 
 -- Checks for the only possible syntax error, which are mismatched parenthesis
-checkSyntax :: Program -> Maybe (Program)
-checkSyntax = undefined
+-- Count '[' ?= Count ']'
+checkSyntax :: String -> Bool
+checkSyntax s = go s 0
+    where
+        go ('[':cs) cnt = go cs (cnt + 1)
+        go (']':cs) cnt = 
+            if cnt == 0 then False -- e.g. "[] ]" or "]["
+            else go cs (cnt - 1)
+        go (_:cs) cnt = go cs cnt
+        go "" cnt = (cnt == 0)
+        
 
 ------------------------------------------------------------------------------
 -- Evaluator
