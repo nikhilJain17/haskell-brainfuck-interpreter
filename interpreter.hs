@@ -110,35 +110,62 @@ checkSyntax s = go s 0
 
 ------------------------------------------------------------------------------
 -- Evaluator
-evaluator :: Program -> Memory -> IO Memory
-evaluator (BrainfuckProgram (x:xs)) mem = case x of 
-    DecrPtr -> evaluator (BrainfuckProgram xs) (moveLeft mem)
-    IncrPtr -> evaluator (BrainfuckProgram xs) (moveRight mem)
-    DecrData -> evaluator (BrainfuckProgram xs) (decr mem)
-    IncrData -> evaluator (BrainfuckProgram xs) (incr mem)
-    loop@(Loop l) -> 
+evaluator :: Program -> Memory -> Bool -> IO Memory
+evaluator (BrainfuckProgram (x:xs)) mem debug = case x of 
+    DecrPtr -> 
+            if debug then 
                 do 
-                    -- putStrLn ("loop" ++ show l ++ show mem ++ "\n" ++ show xs ++ "\n--------")    
-                    -- putStrLn "loop" + (show xs)
-                    if (getCurrentCell mem == 0) 
-                        then evaluator (BrainfuckProgram xs) mem
-                    else 
-                        evaluator (BrainfuckProgram (l ++ [loop] ++ xs)) mem -- evaluate inside of loop and then append loop to it again
+                    (putStrLn . show) mem 
+                    evaluator (BrainfuckProgram xs) (moveLeft mem) debug
+                else
+                    evaluator (BrainfuckProgram xs) (moveLeft mem) debug
+    IncrPtr ->
+            if debug then 
+                do 
+                    (putStrLn . show) mem 
+                    evaluator (BrainfuckProgram xs) (moveRight mem) debug
+            else 
+                evaluator (BrainfuckProgram xs) (moveRight mem) debug
+    DecrData -> 
+            if debug then 
+                do
+                    (putStrLn . show) mem 
+                    evaluator (BrainfuckProgram xs) (decr mem) debug
+            else
+                    evaluator (BrainfuckProgram xs) (decr mem) debug
+    IncrData -> 
+            if debug then 
+                do
+                    (putStrLn . show) mem 
+                    evaluator (BrainfuckProgram xs) (incr mem) debug
+            else                     
+                evaluator (BrainfuckProgram xs) (incr mem) debug
+
+    loop@(Loop l) ->              
+                    if debug then 
+                        do 
+                            (putStrLn . show) mem
+                            evalLoop
+                    else evalLoop
+                        where
+                            evalLoop = 
+                                if (getCurrentCell mem == 0) 
+                                    then evaluator (BrainfuckProgram xs) mem debug
+                                else 
+                                    evaluator (BrainfuckProgram (l ++ [loop] ++ xs)) mem debug -- evaluate inside of loop and then append loop to it again
+        
     Input -> 
         do 
-            -- putStrLn("Input: ")
+            putStrLn("Input: ")
             c <- getChar
-            evaluator (BrainfuckProgram xs) (modifyMemory (const (ord c)) mem)
+            evaluator (BrainfuckProgram xs) (modifyMemory (const (ord c)) mem) debug
     Print -> 
         do
-            -- putStrLn "Print: "
-            -- putStrLn (show (getCurrentCell mem)) -- for printing decimal values, debugging only
             (putChar . chr . getCurrentCell) mem -- for printing chars
             hFlush stdout
+            evaluator (BrainfuckProgram xs) mem debug
 
-            evaluator (BrainfuckProgram xs) mem
-
-evaluator (BrainfuckProgram []) mem = return mem
+evaluator (BrainfuckProgram []) mem _ = return mem
  
 -- corresponding to DecrPtr
 moveLeft :: Memory -> Memory
@@ -183,15 +210,26 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [prgm] -> interpret prgm
-        ["-f", file] -> putStrLn file 
-        _ -> putStrLn "Usage: ./interpreter [program] or ./interpreter -f [srcfile.bf]"
+        [prgm] -> interpret prgm False
+        [prgm, "-d"] -> interpret prgm True
+        ["-f", file] -> do
+                contents <- readFile file
+                interpret contents False
+        ["-f", file, "-d"] -> do                 
+                contents <- readFile file
+                interpret contents True
 
-interpret :: String -> IO ()
-interpret prgm = 
+        _ -> putStrLn "Usage: ./interpreter <program> [-d] or ./interpreter -f <src.bf> [-d], -d for debug mode"
+
+interpret :: String -> Bool -> IO ()
+interpret prgm debug = 
     do 
-        mem <- evaluator (parser prgm) blankMemory
-        putStrLn (show mem)
+        if (checkSyntax prgm) then
+            do
+                mem <- evaluator (parser prgm) blankMemory debug
+                putStrLn (show mem)
+        else
+            putStrLn "Mismatched brackets!"
 
 ------------------------------------------------------------------------------
 -- Printing
@@ -221,5 +259,5 @@ showCenterCell m = " [*" ++ (show m) ++ "*] "
 
 -- for all other cells
 showMemoryCell :: MemoryCell -> String
-showMemoryCell m = " [" ++ (show m) ++ "] "
+showMemoryCell m = "[" ++ (show m) ++ "]"
 
