@@ -1,5 +1,7 @@
 import Data.Char
 import System.IO
+import Data.Text (isInfixOf, pack)    
+import System.Environment
 
 ------------------------------------------------------------------------------
 -- Types
@@ -132,7 +134,7 @@ evaluator (BrainfuckProgram (x:xs)) mem = case x of
             -- putStrLn "Print: "
             -- putStrLn (show (getCurrentCell mem)) -- for printing decimal values, debugging only
             (putChar . chr . getCurrentCell) mem -- for printing chars
-            -- hFlush stdout
+            hFlush stdout
 
             evaluator (BrainfuckProgram xs) mem
 
@@ -177,6 +179,20 @@ blankMemory = Memory (repeat 0) 0 (repeat 0)
 
 ------------------------------------------------------------------------------
 -- REPL
+main :: IO ()
+main = do
+    args <- getArgs
+    case args of
+        [prgm] -> interpret prgm
+        ["-f", file] -> putStrLn file 
+        _ -> putStrLn "Usage: ./interpreter [program] or ./interpreter -f [srcfile.bf]"
+
+interpret :: String -> IO ()
+interpret prgm = 
+    do 
+        mem <- evaluator (parser prgm) blankMemory
+        putStrLn (show mem)
+
 ------------------------------------------------------------------------------
 -- Printing
 
