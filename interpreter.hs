@@ -14,7 +14,6 @@ data Instruction = IncrPtr
     | Print
     | Input
     | Loop [Instruction]
-    | SyntaxError -- todo better error handling
     | Comment Char
 
 -- A program is the whole source code, represented as a list of Instructions
@@ -22,21 +21,15 @@ data Instruction = IncrPtr
 data Program = BrainfuckProgram [Instruction]
 
 -- BF programs operate on a list of memory cells, where each cell holds one character
--- A pointer points to the current memory cell the program is looking at
--- Left memory is in reverse order. 
--- e.g. the memory tape (...-4, -3, -2, -1, *0*, 1, 2, 3, 4...) would be represented by
--- Memory [-1, -2, -3, -4, ...] 0 [1, 2, 3, 4...]
+-- memory is inf tape represented by zipper
 data Memory = Memory [MemoryCell] MemoryCell [MemoryCell] 
 
 type MemoryCell = Int
-
 ------------------------------------------------------------------------------
 -- Parser
 parser :: [Char] -> Program
--- parser sourceCode = BrainfuckProgram $ map parseSingleInstruction sourceCode
 parser sourceCode = BrainfuckProgram $ parseInstr sourceCode []
 
--- assumes syntax errors have already been checked for
 parseInstr :: String -> [Instruction] -> [Instruction]
 parseInstr (c:cs) instr = case c of
     '>' -> parseInstr cs (instr ++ [IncrPtr])
@@ -49,7 +42,6 @@ parseInstr (c:cs) instr = case c of
         where
             loopInstr = parseInstr (loopContents) []
             (loopContents, after) = superBracket (c:cs)
-            -- str = stringAfterMatchingBracket cs
     ']' -> parseInstr cs instr -- do nothing
     _ -> parseInstr cs instr
 
@@ -72,31 +64,7 @@ brackets string = go string 0 False
         go (s:ss) n flag = s : go ss n flag 
         go "" _ _ = ""
 
-
--- -- returns string inside matching brackets assuming first char is open bracket
--- -- e.g. for "[abcdef]ghijkl", returns "abcdef"
--- stringInsideMatchingBracket :: String -> String -> Int -> String
--- stringInsideMatchingBracket (c:cs) currString parenCounter = 
---     if c == ']' 
---         then 
---             if parenCounter - 1 == 0 
---                 then currString
---             else stringInsideMatchingBracket cs (currString ++ [c]) (parenCounter - 1)
---     else if c == '[' then stringInsideMatchingBracket cs (currString ++ [c]) (parenCounter++)
---     else (stringInsideMatchingBracket cs (currString ++ [c]))
--- stringInsideMatchingBracket "" currString _ = currString 
-    
--- -- returns string after matching brackets
--- -- e.g. for "[abcdef]ghijkl", returns "ghijkl"
--- stringAfterMatchingBracket :: String -> String 
--- stringAfterMatchingBracket (c:cs) = 
---     if c == ']' then cs
---     else stringAfterMatchingBracket cs
--- stringAfterMatchingBracket "" = ""
-
-
 -- Checks for the only possible syntax error, which are mismatched parenthesis
--- Count '[' ?= Count ']'
 checkSyntax :: String -> Bool
 checkSyntax s = go s 0
     where
@@ -106,57 +74,38 @@ checkSyntax s = go s 0
             else go cs (cnt - 1)
         go (_:cs) cnt = go cs cnt
         go "" cnt = (cnt == 0)
-        
-
 ------------------------------------------------------------------------------
 -- Evaluator
 evaluator :: Program -> Memory -> Bool -> IO Memory
 evaluator (BrainfuckProgram (x:xs)) mem debug = case x of 
     DecrPtr -> 
-            if debug then 
-                do 
-                    (putStrLn . show) mem 
-                    evaluator (BrainfuckProgram xs) (moveLeft mem) debug
+                if (not debug) then evaluator (BrainfuckProgram xs) (moveLeft mem) debug
                 else
-                    evaluator (BrainfuckProgram xs) (moveLeft mem) debug
+                    (putStrLn . show) mem >> evaluator (BrainfuckProgram xs) (moveLeft mem) debug
     IncrPtr ->
-            if debug then 
-                do 
-                    (putStrLn . show) mem 
-                    evaluator (BrainfuckProgram xs) (moveRight mem) debug
-            else 
-                evaluator (BrainfuckProgram xs) (moveRight mem) debug
+            if (not debug) then evaluator (BrainfuckProgram xs) (moveRight mem) debug
+                else
+                    (putStrLn . show) mem >> evaluator (BrainfuckProgram xs) (moveRight mem) debug
     DecrData -> 
-            if debug then 
-                do
-                    (putStrLn . show) mem 
-                    evaluator (BrainfuckProgram xs) (decr mem) debug
-            else
-                    evaluator (BrainfuckProgram xs) (decr mem) debug
+            if (not debug) then evaluator (BrainfuckProgram xs) (decr mem) debug
+                else
+                    (putStrLn . show) mem >> evaluator (BrainfuckProgram xs) (decr mem) debug
     IncrData -> 
-            if debug then 
-                do
-                    (putStrLn . show) mem 
-                    evaluator (BrainfuckProgram xs) (incr mem) debug
-            else                     
-                evaluator (BrainfuckProgram xs) (incr mem) debug
-
+            if (not debug) then evaluator (BrainfuckProgram xs) (incr mem) debug
+                else
+                    (putStrLn . show) mem >> evaluator (BrainfuckProgram xs) (incr mem) debug
     loop@(Loop l) ->              
-                    if debug then 
-                        do 
-                            (putStrLn . show) mem
-                            evalLoop
-                    else evalLoop
+                    if (not debug) then evalLoop
+                        else  
+                            (putStrLn . show) mem >> evalLoop
                         where
                             evalLoop = 
                                 if (getCurrentCell mem == 0) 
                                     then evaluator (BrainfuckProgram xs) mem debug
                                 else 
                                     evaluator (BrainfuckProgram (l ++ [loop] ++ xs)) mem debug -- evaluate inside of loop and then append loop to it again
-        
     Input -> 
         do 
-            putStrLn("Input: ")
             c <- getChar
             evaluator (BrainfuckProgram xs) (modifyMemory (const (ord c)) mem) debug
     Print -> 
