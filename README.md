@@ -25,11 +25,20 @@ Make sure you have GHC installed, and run ```ghc -o brainfuck interpreter.hs``` 
 ### Running a program from source file
 ```./brainfuck -f <filename.bf>```
 
+<img src="https://raw.githubusercontent.com/nikhilJain17/haskell-brainfuck-interpreter/master/assets/bf_file.gif" width="4000"/>
+
+
 ### Running a program from command line
 ```./brainfuck <program>```
+
+<img src="https://raw.githubusercontent.com/nikhilJain17/haskell-brainfuck-interpreter/master/assets/bf_inputted.gif" width="4000"/>
 
 
 ### Running in debug mode
 Debug mode dumps the state of memory after each instruction execution.
 ```./brainfuck <program> -d"``` or ```./brainfuck -f <filename.bf> -d```
+
+
+<img src="https://raw.githubusercontent.com/nikhilJain17/haskell-brainfuck-interpreter/master/assets/debugmode.gif" width="4000"/>
+
 
